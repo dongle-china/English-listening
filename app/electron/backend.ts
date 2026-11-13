@@ -1,7 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { createInterface } from "node:readline";
-import { existsSync } from "node:fs";
 import path from "node:path";
 
 export interface BackendHandshake {
@@ -24,29 +23,6 @@ export interface BackendEndpoint {
 }
 
 const HANDSHAKE_TIMEOUT_MS = 15_000;
-
-function resolveBackendBinary(): string {
-  const override = process.env.EL_BACKEND_BIN;
-  if (override !== undefined && override.trim().length > 0 && existsSync(override)) {
-    return path.resolve(override);
-  }
-  const candidates =
-    process.env.NODE_ENV === "production"
-      ? [
-          path.join(process.resourcesPath ?? "", "backend", "el-backend.exe"),
-          path.join(process.resourcesPath ?? "", "backend", "el-backend"),
-        ]
-      : [
-          path.join(process.cwd(), "..", "build", "debug", "el-backend.exe"),
-          path.join(process.cwd(), "..", "build", "release", "el-backend.exe"),
-        ];
-  for (const candidate of candidates) {
-    if (candidate.length > 0 && existsSync(candidate)) return path.resolve(candidate);
-  }
-  throw new Error(
-    `backend binary not found (set EL_BACKEND_BIN); tried: ${candidates.filter((c) => c.length > 0).join(", ")}`,
-  );
-}
 
 function parseHandshakeLine(line: string): BackendHandshake | null {
   const trimmed = line.trim();
@@ -74,6 +50,12 @@ function parseHandshakeLine(line: string): BackendHandshake | null {
 
 export class BackendProcess extends EventEmitter {
   private child: ChildProcess | null = null;
+  private readonly binaryPath: string;
+
+  constructor(binaryPath: string) {
+    super();
+    this.binaryPath = path.resolve(binaryPath);
+  }
 
   override emit<EventKey extends keyof BackendEventsMap>(
     event: EventKey,
@@ -91,8 +73,7 @@ export class BackendProcess extends EventEmitter {
 
   start(): void {
     if (this.child !== null) return;
-    const binary = resolveBackendBinary();
-    const child = spawn(binary, [], {
+    const child = spawn(this.binaryPath, [], {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
@@ -105,6 +86,15 @@ export class BackendProcess extends EventEmitter {
       this.emit("log", "[backend] handshake timeout");
       this.stop();
     }, HANDSHAKE_TIMEOUT_MS);
+
+    child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      this.child = null;
+      this.emit("log", `[backend] spawn failed: ${error.message}`);
+      this.emit("exit", null);
+    });
 
     if (child.stdout !== null) {
       const stdoutLines = createInterface({ input: child.stdout });

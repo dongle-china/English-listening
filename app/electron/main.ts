@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { BackendProcess, type BackendEndpoint } from "./backend";
 
@@ -41,8 +42,29 @@ function createWindow(): void {
   });
 }
 
+function resolveBackendBinary(): string {
+  const appDir = app.getAppPath();
+  const override = process.env.EL_BACKEND_BIN;
+  if (override !== undefined && override.trim().length > 0) {
+    const resolved = path.resolve(appDir, override.trim());
+    if (existsSync(resolved)) return resolved;
+  }
+  if (!isDev) {
+    const resources = process.resourcesPath ?? "";
+    for (const name of ["el-backend.exe", "el-backend"]) {
+      const candidate = path.resolve(resources, "backend", name);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  for (const variant of ["debug", "release"]) {
+    const candidate = path.resolve(appDir, "..", "build", variant, "el-backend.exe");
+    if (existsSync(candidate)) return candidate;
+  }
+  return path.resolve(appDir, "..", "build", "debug", "el-backend.exe");
+}
+
 function startBackend(): void {
-  backend = new BackendProcess();
+  backend = new BackendProcess(resolveBackendBinary());
   backend.on("ready", (next) => {
     endpoint = next;
     mainWindow?.webContents.send("backend:endpoint", endpoint);
@@ -78,10 +100,3 @@ app.on("before-quit", () => {
 process.on("exit", () => {
   backend?.stop();
 });
-
-if (isDev) {
-  process.on("SIGINT", () => {
-    backend?.stop();
-    app.quit();
-  });
-}
