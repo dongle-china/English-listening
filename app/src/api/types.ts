@@ -13,7 +13,14 @@ export interface Pagination {
   total: number;
 }
 
-export interface Page<T> {
+export interface PageData<T> {
   items: T[];
-  meta: Pagination;
+}
+
+export function readPagination(meta: Record<string, unknown> | undefined): Pagination {
+  return {
+    page: typeof meta?.["page"] === "number" ? meta["page"] : 1,
+    pageSize: typeof meta?.["pageSize"] === "number" ? meta["pageSize"] : 20,
+    total: typeof meta?.["total"] === "number" ? meta["total"] : 0,
+  };
 }

@@ -5,7 +5,7 @@ import { useBackendStore } from "@/stores/backend";
 import { useToastStore } from "@/stores/toast";
 import { useSettingsStore } from "@/stores/settings";
 import { ApiError, NetworkError } from "@/api/client";
-import type { Page, WordBank } from "@/api/types";
+import { readPagination, type PageData, type WordBank } from "@/api/types";
 import ShortcutsCard from "@/components/ShortcutsCard.vue";
 
 const backend = useBackendStore();
@@ -39,11 +39,11 @@ async function load(): Promise<void> {
   loading.value = true;
   loadError.value = "";
   try {
-    const result = await backend.client.get<Page<WordBank>>(
+    const result = await backend.client.get<PageData<WordBank>>(
       `/api/v1/wordbanks?page=${String(page.value)}&pageSize=${String(pageSize.value)}`,
     );
     items.value = result.data.items;
-    total.value = result.data.meta.total;
+    total.value = readPagination(result.meta).total;
     if (selectedIndex.value >= items.value.length) selectedIndex.value = -1;
   } catch (error) {
     loadError.value = friendlyError(error);
