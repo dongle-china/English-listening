@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "msys2-ucrt64",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "D:/msys64/ucrt64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "D:/msys64/ucrt64/bin/g++.exe",
+        "CMAKE_PREFIX_PATH": "D:/msys64/ucrt64",
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "environment": {
+        "PATH": "D:/msys64/ucrt64/bin;$penv{PATH}"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "MSYS2 UCRT64 Debug",
+      "inherits": "msys2-ucrt64"
+    },
+    {
+      "name": "release",
+      "displayName": "MSYS2 UCRT64 Release",
+      "inherits": "msys2-ucrt64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    }
+  ]
+}

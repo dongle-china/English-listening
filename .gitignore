@@ -1,0 +1,14 @@
+build/
+cmake-build-*/
+data/
+logs/
+.env
+.env.local
+*.db
+*.db-shm
+*.db-wal
+*.log
+compile_commands.json
+.idea/
+.vs/
+supabase/.temp/
